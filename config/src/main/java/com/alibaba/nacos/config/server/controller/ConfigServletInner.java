@@ -58,6 +58,8 @@ public class ConfigServletInner {
 	@Autowired
 	private PersistService persistService;
 	
+	@Autowired
+	private ConfigService configService;
 	private static final int TRY_GET_LOCK_TIMES = 9;
 
 	private static final int START_LONGPULLING_VERSION_NUM = 204;
@@ -108,10 +110,19 @@ public class ConfigServletInner {
      */
 	public String doGetConfig(HttpServletRequest request, HttpServletResponse response, String dataId, String group,
 							  String tenant, String tag, String clientIp) throws IOException, ServletException {
-		final String groupKey = GroupKey2.getKey(dataId, group, tenant);
+	    String groupKey = GroupKey2.getKey(dataId, group, tenant);
 		String autoTag = request.getHeader("Vipserver-Tag");
 		String requestIpApp = RequestUtil.getAppName(request);
 		int lockResult = tryConfigReadLock(request, response, groupKey);
+		
+		//according tenant name to load 
+		if(StringUtils.isNotEmpty(tenant) && lockResult == 0){
+		    tenant = configService.getTenantId(tenant);
+		    if(tenant != null){
+		        groupKey = GroupKey2.getKey(dataId, group, tenant);
+		        lockResult = tryConfigReadLock(request, response, groupKey);
+		    }
+		}
 
 		final String requestIp = RequestUtil.getRemoteIp(request);
 		boolean isBeta = false;
@@ -278,6 +289,10 @@ public class ConfigServletInner {
 
 		return HttpServletResponse.SC_OK + "";
 	}
+	
+	public String getTenantId(String tenantName){
+	   return  configService.getTenantId(tenantName);
+	}
 
     private static void releaseConfigReadLock(String groupKey) {
         ConfigService.releaseReadLock(groupKey);
@@ -330,5 +345,9 @@ public class ConfigServletInner {
 	private static boolean fileNotExist(File file) {
 		return file == null || !file.exists();
 	}
+
+    public void setConfigService(ConfigService configService) {
+        this.configService = configService;
+    }
 
 }

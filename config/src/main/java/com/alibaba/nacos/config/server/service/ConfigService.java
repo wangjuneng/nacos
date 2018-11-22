@@ -15,35 +15,50 @@
  */
 package com.alibaba.nacos.config.server.service;
 
-import com.alibaba.nacos.config.server.constant.Constants;
-import com.alibaba.nacos.config.server.model.CacheItem;
-import com.alibaba.nacos.config.server.model.ConfigInfoBase;
-import com.alibaba.nacos.config.server.utils.GroupKey;
-import com.alibaba.nacos.config.server.utils.GroupKey2;
-import com.alibaba.nacos.config.server.utils.MD5;
-import com.alibaba.nacos.config.server.utils.event.EventDispatcher;
+import static com.alibaba.nacos.common.util.SystemUtils.STANDALONE_MODE;
+import static com.alibaba.nacos.config.server.utils.LogUtil.defaultLog;
+import static com.alibaba.nacos.config.server.utils.LogUtil.dumpLog;
+import static com.alibaba.nacos.config.server.utils.LogUtil.fatalLog;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.alibaba.nacos.common.util.SystemUtils.STANDALONE_MODE;
-import static com.alibaba.nacos.config.server.utils.LogUtil.*;
+import com.alibaba.nacos.config.server.constant.Constants;
+import com.alibaba.nacos.config.server.model.CacheItem;
+import com.alibaba.nacos.config.server.model.ConfigInfoBase;
+import com.alibaba.nacos.config.server.model.TenantInfo;
+import com.alibaba.nacos.config.server.utils.GroupKey;
+import com.alibaba.nacos.config.server.utils.GroupKey2;
+import com.alibaba.nacos.config.server.utils.MD5;
+import com.alibaba.nacos.config.server.utils.event.EventDispatcher;
 
 /**
  * config service
  * @author Nacos
  *
  */
+@Service
 public class ConfigService {
 
-	@Autowired
 	private static PersistService persistService;
+	
+	@Autowired
+    public ConfigService(PersistService persistService){
+        ConfigService.persistService = persistService;
+    }
     
     static public int groupCount() {
         return CACHE.size();
@@ -481,6 +496,20 @@ public class ConfigService {
 		CacheItem item = CACHE.get(groupKey);
 		return (null != item) ? item.getIps4Beta() : Collections.<String>emptyList();
 	}
+	
+    public String getTenantId(String tenantName) {
+        if (!StringUtils.isEmpty(tenantName)) {
+            if (!TENANT_CACHE.contains(tenantName)) {
+                TenantInfo tenantInfo = persistService.findTenantByTenantName(tenantName);
+                if (tenantInfo != null) {
+                    TENANT_CACHE.put(tenantName, tenantInfo.getTenantId());
+                }
+            }
+
+            return TENANT_CACHE.get(tenantName);
+        }
+        return null;
+    }
 
 	/**
 	 * 返回cache。
@@ -585,5 +614,11 @@ public class ConfigService {
     */
     static private final ConcurrentHashMap<String, CacheItem> CACHE =
             new ConcurrentHashMap<String, CacheItem>();
+    
+    /**
+     * tenantName->tenantId
+     */
+    static private final ConcurrentHashMap<String, String> TENANT_CACHE =
+        new ConcurrentHashMap<String, String>(); 
 }
 

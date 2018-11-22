@@ -123,6 +123,14 @@ public class ConfigController {
 				RequestUtil.getRemoteIp(request), dataId, group);
 			throw new NacosException(NacosException.NO_RIGHT, "dataId:" + dataId + " is aggr");
 		}
+		
+		//according tenant name  to load tenantId
+		if(tenant != null){
+		    String tenantId =inner.getTenantId(tenant);
+		    if(tenantId != null){
+		        tenant = tenantId;
+		    }
+		}
 
 		final Timestamp time = TimeUtils.getCurrentTime();
 		String betaIps = request.getHeader("betaIps");

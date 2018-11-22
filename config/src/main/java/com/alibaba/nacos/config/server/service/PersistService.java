@@ -876,7 +876,7 @@ public class PersistService {
 	public long findConfigMaxId() {
 		String sql = "select max(id) from config_info";
 		try {
-			return jt.queryForObject(sql, Integer.class);
+			return jt.queryForObject(sql, Long.class);
 		} catch (NullPointerException e) {
 			return 0;
 		}
@@ -3070,6 +3070,21 @@ public class PersistService {
 			throw e;
 		}
 	}
+	
+	public TenantInfo findTenantByTenantName(String tenantName) {
+        String sql = "select tenant_id,tenant_name,tenant_desc from tenant_info where tenant_name=?";
+        try {
+            return this.jt.queryForObject(sql, new Object[] { tenantName }, TENANT_INFO_ROW_MAPPER);
+        } catch (CannotGetJdbcConnectionException e) {
+            fatalLog.error("[db-error] " + e.toString(), e);
+            throw e;
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        } catch (Exception e) {
+            fatalLog.error("[db-other-error]" + e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
 
 	private List<ConfigInfo> convertDeletedConfig(List<Map<String, Object>> list) {
 		List<ConfigInfo> configs = new ArrayList<ConfigInfo>();
